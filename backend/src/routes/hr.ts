@@ -1,14 +1,16 @@
 import express, { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+// @ts-ignore
+import * as jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import {auth} from '../middleware/auth';
+import { authentication } from '../middleware/authentication';
 
 const Hrrouter = express.Router();
 const prisma = new PrismaClient();
-const JWT_SECRET = "Aryan"; // Should use process.env.JWT_SECRET in production
 
-// Zod validation schemas
+const JWT_SECRET = "Aryan";  
+
+// Validation schemas
 const hrDetails = z.object({
   name: z.string(),
   mail: z.string().email(),
@@ -21,14 +23,17 @@ const jobDetails = z.object({
   description: z.string(),
 });
 
-// Register a new company
+// Register Company - POST route
 Hrrouter.post('/RegisterCompany', async (req: Request, res: Response) => {
   const HrDetails = req.body;
 
+  console.log('Received HR Details:', HrDetails);
+
   const result = hrDetails.safeParse(HrDetails);
+
   if (!result.success) {
     console.error('Validation failed:', result.error.format());
-    return res.status(400).json({ msg: 'Information is invalid. Check again.' });
+    return res.json({ msg: 'Information is invalid. Check again.' });
   }
 
   try {
@@ -37,7 +42,7 @@ Hrrouter.post('/RegisterCompany', async (req: Request, res: Response) => {
     });
 
     if (existing) {
-      return res.status(409).json({ msg: 'Hey, you are already registered!' });
+      return res.json({ msg: 'Hey, you are already registered!' });
     }
 
     const newCompany = await prisma.company.create({
@@ -45,44 +50,53 @@ Hrrouter.post('/RegisterCompany', async (req: Request, res: Response) => {
         company_name: HrDetails.name,
         company_email: HrDetails.mail,
         company_phone: HrDetails.contact,
-        password: HrDetails.password, // Passwords should be hashed!
+        password: HrDetails.password,
       },
     });
 
+    // Generate JWT token after successful registration
     const token = jwt.sign(
       { companyId: newCompany.id },
       JWT_SECRET,
-      { expiresIn: '5h' }
+      { expiresIn: '5h' }  // Token expires in 5 hours
     );
 
-    return res.status(201).json({ msg: 'Company registered successfully.', token });
+    return res.json({ msg: 'Company registered successfully.', token });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ msg: 'Could not register your company!' });
+    return res.json({ msg: 'Could not register your company!' });
   }
 });
 
-// Login route
+// Company Login - POST route
 Hrrouter.post('/LoginCompany', async (req: Request, res: Response) => {
   const { mail, password } = req.body;
 
+  // Validate the provided data
   if (!mail || !password) {
     return res.status(400).json({ msg: 'Email and password are required' });
   }
 
   try {
+    // Check if the company exists in the database
     const company = await prisma.company.findUnique({
       where: { company_email: mail },
     });
 
-    if (!company || company.password !== password) {
+    if (!company) {
+      return res.status(404).json({ msg: 'Company not found' });
+    }
+
+    // Check if the password is correct
+    if (company.password !== password) {
       return res.status(401).json({ msg: 'Invalid credentials' });
     }
 
+    // Generate JWT token after successful login
     const token = jwt.sign(
       { companyId: company.id },
       JWT_SECRET,
-      { expiresIn: '5h' }
+      { expiresIn: '5h' }  // Token expires in 5 hours
     );
 
     return res.json({ msg: 'Login successful', token });
@@ -92,52 +106,53 @@ Hrrouter.post('/LoginCompany', async (req: Request, res: Response) => {
   }
 });
 
-// POST a Job
-Hrrouter.post('/JobPost', auth, async (req: any, res: Response) => {
-  const result = jobDetails.safeParse(req.body);
-  if (!result.success) {
-    return res.status(400).json({ msg: 'Information is invalid. Check again.' });
-  }
+// POST Job - protected
+Hrrouter.post('/JobPosting', authentication, async (req: Request, res: Response) => {
+  const jobDetailsInfo = req.body;
 
   try {
-    const { position, description } = req.body;
-    const companyId = req.user.id;
+    const companyId = (req as any).user?.companyId;
+    console.log("Company ID from JWT:", companyId); // Log the companyId for debugging
 
-    await prisma.job.create({
+    if (!companyId) {
+      console.error("Missing companyId from JWT");
+      return res.status(401).json({ msg: "Unauthorized. Invalid token." });
+    }
+
+    const job = await prisma.job.create({
       data: {
-        position,
-        description,
-        company_id: companyId
+        position: jobDetailsInfo.position,
+        discription: jobDetailsInfo.description,
+        company_id: companyId,
       }
     });
 
-    return res.status(201).json({ msg: 'Your job has been posted successfully!' });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ msg: 'Could not post the job. Try again!' });
+    return res.json({ msg: "Your job is posted!!", job });
+  } catch (err) {
+    console.error("Job post error:", err);
+    return res.status(500).json({ msg: "Internal error while posting job." });
   }
 });
 
-// DELETE a Job
-Hrrouter.delete('/JobDelete', auth, async (req: any, res: Response) => {
-  const { jobId } = req.body;
 
-  if (!jobId) return res.status(400).json({ msg: "Job id is not valid." });
+// DELETE Job - protected (changed to DELETE method)
+Hrrouter.delete('/JobDelete', authentication, async (req: Request, res: Response) => {
+  const { jobId } = req.body;
+  if (!jobId) return res.json({ msg: "Job id is not valid." });
 
   try {
     await prisma.job.delete({
-      where: { job_id: jobId }
+      where: {
+        job_id: jobId
+      }
     });
-
     return res.json({ msg: "Your job is removed!!" });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ msg: "Could not remove the job. Try again!" });
+    return res.json({ msg: "Could not remove the job. Try again!" });
   }
 });
-
-// View Dashboard (Sample)
-Hrrouter.get('/viewDashBoard', auth, async (_req: Request, res: Response) => {
+Hrrouter.get('/viewDashBoard', authentication, async (req: Request, res: Response) => {
   return res.json({ msg: 'Hey, your stats are empty for now.' });
 });
 
