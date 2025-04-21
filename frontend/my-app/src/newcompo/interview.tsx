@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 export const InterviewPage = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(1500);
-  const [socket, setSocket] = useState<WebSocket | null>(null); // WebSocket state
+  const [socket, setSocket] = useState<WebSocket | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -14,75 +14,68 @@ export const InterviewPage = () => {
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
-  const VOLUME_THRESHOLD = 5; // silence if max < 5
-  const SILENCE_DURATION = 1500; // 1.5 seconds
+  const VOLUME_THRESHOLD = 5;
+  const SILENCE_DURATION = 1500;
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleRecordToggle = async () => {
     if (!isRecording && secondsLeft === 1500) {
       try {
-        // Start recording
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
 
-        const mediaRecorder = new MediaRecorder(stream);
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
         mediaRecorderRef.current = mediaRecorder;
 
-        // Set up WebSocket connection
-        const ws = new WebSocket("wss://your-backend-websocket-url"); // Replace with your WebSocket URL
+        const ws = new WebSocket("ws://localhost:3000/Interview");
+        ws.binaryType = 'arraybuffer'; // to receive audio buffers
         ws.onopen = () => {
           console.log("WebSocket connection established.");
           setSocket(ws);
         };
 
-        // Handle server's audio response
         ws.onmessage = async (event) => {
-          const response = event.data;
+          try {
+            if (typeof event.data === 'string') {
+              const maybeJson = JSON.parse(event.data);
+              if (maybeJson?.type === "text") {
+                const utterance = new SpeechSynthesisUtterance(maybeJson.text);
+                window.speechSynthesis.speak(utterance);
+              }
+            } else {
+              stopRecording();
 
-          if (response) {
-            if (response.type === "audio") {
-              // If the response is audio data, stop recording and play it
-              stopRecording(); // Stop microphone recording
-
-              // Play the server's audio response
-              const audioBlob = new Blob([response.data], { type: "audio/wav" });
+              const audioBlob = new Blob([event.data], { type: "audio/wav" });
               const audioUrl = URL.createObjectURL(audioBlob);
               const audio = new Audio(audioUrl);
-              audio.onended = () => {
-                // After the audio finishes, start recording again
-                startRecording(ws); // Start recording user audio again
-              };
+              audio.onended = () => startRecording(ws);
               audio.play();
-            } else {
-              // Handle text responses, for example using text-to-speech
-              const utterance = new SpeechSynthesisUtterance(response);
-              window.speechSynthesis.speak(utterance);
             }
+          } catch (err) {
+            console.error("Failed to process WebSocket message", err);
           }
         };
 
-        // Send audio chunk to WebSocket server
         mediaRecorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
             chunksRef.current.push(e.data);
             if (ws.readyState === WebSocket.OPEN) {
-              ws.send(e.data); // Send the audio chunk to backend
+                console.log("Sending audio chunk to WebSocket:", e.data); // Log the data you're sending
+                ws.send(e.data);
             }
           }
         };
 
-        // Stop recording and finalize audio
         mediaRecorder.onstop = async () => {
           const blob = new Blob(chunksRef.current, { type: "audio/webm" });
           chunksRef.current = [];
-          await sendAudioToBackend(blob); // For final audio processing if needed
+          await sendAudioToBackend(blob);
         };
 
-        mediaRecorder.start(); // Start continuous recording
+        mediaRecorder.start();
         setupSilenceDetection(stream);
         setIsRecording(true);
 
-        // Countdown timer
         const intervalId = setInterval(() => {
           setSecondsLeft((prev) => {
             if (prev <= 1) {
@@ -122,8 +115,8 @@ export const InterviewPage = () => {
       if (maxVolume < VOLUME_THRESHOLD) {
         if (!silenceTimerRef.current) {
           silenceTimerRef.current = setTimeout(() => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-              mediaRecorderRef.current.stop(); // Trigger onstop and sendAudio
+            if (mediaRecorderRef.current?.state === "recording") {
+              mediaRecorderRef.current.stop();
             }
             silenceTimerRef.current = null;
           }, SILENCE_DURATION);
@@ -146,15 +139,16 @@ export const InterviewPage = () => {
       mediaRecorderRef.current.stop();
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
-
+    socket?.close();
     setIsRecording(false);
   };
 
   const startRecording = (ws: WebSocket) => {
     if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.start(); // Restart recording
-      setIsRecording(true); // Mark as recording
-      setupSilenceDetection(streamRef.current as MediaStream); // Continue silence detection
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setupSilenceDetection(streamRef.current as MediaStream);
+      console.log("Recording restarted.");
     }
   };
 
@@ -163,7 +157,8 @@ export const InterviewPage = () => {
     formData.append("audio", blob, "chunk.webm");
 
     try {
-      await fetch("https://your-backend.com/upload-audio", {
+      console.log("Sending audio to backend...");
+      await fetch("http://localhost:3000/Interview/audio", {
         method: "POST",
         body: formData,
       });
