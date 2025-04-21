@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import router from './routes/user';
-import routerHr from './routes/Hr';
 import { PrismaClient } from '@prisma/client';
 import Interviewrouter from './routes/interview';
 
@@ -19,7 +18,6 @@ app.use(express.json());
 
 // Routes
 app.use("/api", router);
-app.use("/company", routerHr);
 app.use('/Interview', Interviewrouter);
 
 // Error handling middleware (useful for catching unhandled errors)

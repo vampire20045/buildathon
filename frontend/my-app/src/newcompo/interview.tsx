@@ -56,15 +56,33 @@ export const InterviewPage = () => {
           }
         };
 
-        mediaRecorder.ondataavailable = (e) => {
+        mediaRecorder.onstart = () => {
+          console.log("Recording started...");
+        };
+        
+        mediaRecorder.ondataavailable = async (e) => {
+          console.log("Data available:", e.data.size);  // Log size of the data
           if (e.data.size > 0) {
+            console.log("Recording audio data:", e.data);
+            const buffer = await e.data.arrayBuffer();
             chunksRef.current.push(e.data);
+        
             if (ws.readyState === WebSocket.OPEN) {
-                console.log("Sending audio chunk to WebSocket:", e.data); // Log the data you're sending
-                ws.send(e.data);
+              console.log("✅ Sending audio chunk to WebSocket:", buffer.byteLength, "bytes");
+              ws.send(buffer); // Sending the ArrayBuffer
             }
+          } else {
+            console.log("No audio data recorded in this chunk.");
           }
         };
+        
+        
+        mediaRecorder.onstop = () => {
+          console.log("Recording stopped.");
+        };
+        
+        
+        
 
         mediaRecorder.onstop = async () => {
           const blob = new Blob(chunksRef.current, { type: "audio/webm" });

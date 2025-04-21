@@ -7,12 +7,11 @@ import { Homepage } from './newcompo/homepage'
 import { InterviewPage } from './newcompo/interview'
 import {LogIn} from './newcompo/company/LogIn'
 import {SignUp} from './newcompo/company/SignUp'
+import { JobPosting } from './newcompo/jobposting'
 
 function App() {
   return (
-    <BrowserRouter>
-  
-       
+    <BrowserRouter>       
     <Routes>
     <Route path="/" element={<Homepage/>}></Route>
     <Route path="/Interview" element={<InterviewPage/>}></Route>
@@ -20,7 +19,8 @@ function App() {
       <Route path="/Signin" element={<Singin/>}></Route>
       <Route path="/company/Signup" element={<SignUp/>}></Route>
       <Route path="/company/Login" element={<LogIn/>}></Route>
-     
+      <Route path="/jobposting" element={<JobPosting/>}></Route>
+
     </Routes>
     </BrowserRouter>
   );

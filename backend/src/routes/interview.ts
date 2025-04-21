@@ -7,6 +7,7 @@ import http from 'http';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import path from 'path';
+import { Buffer } from 'buffer';
 
 dotenv.config();
 
@@ -73,7 +74,7 @@ wss.on('connection', (ws: WebSocket) => {
     try {
       console.log('🤖 Requesting AI response for transcript');
       const model = ai.getGenerativeModel({ model: 'gemini-1.5-pro' });
-      const result = await model.generateContent({ prompt: transcript });
+      const result = await model.generateContent(transcript);
 
       const responseText = await result.response.text();
       console.log(`💬 Gemini AI response: ${responseText}`);
@@ -85,13 +86,16 @@ wss.on('connection', (ws: WebSocket) => {
       ws.send(JSON.stringify({ type: 'error', message: 'AI response error' }));
     }
   });
-
+  
   ws.on('message', (chunk: RawData) => {
-    console.log(`🎤 Received audio chunk (${chunk.length} bytes)`);
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as ArrayBuffer);
+    console.log(`🎤 Received audio chunk (${buffer.length} bytes)`);
+  
     if (dgLive.getReadyState() === 1) {
-      dgLive.send(chunk);
+      dgLive.send(buffer);
     }
   });
+  
 
   ws.on('close', async () => {
     console.log('Client disconnected');
