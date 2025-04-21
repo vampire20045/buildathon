@@ -1,135 +1,79 @@
-import axios from "axios";
-import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Msgbox } from "../subcomponent/msgbox";
+import { useState } from "react";
 import { Heading } from "../subcomponent/Heading";
 import { Anchor } from "../subcomponent/anchorcompo";
 import { Subheading } from "../subcomponent/SubHeading";
 import { InputAndLabel } from "../subcomponent/labelAndInput";
 import { Button } from "../subcomponent/button";
-
-interface postInput {
-  username: string;
-  email: string;
-  contact: string;
-  password: string;
-}
-
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 export const SignUp = () => {
+  const [name, setName] = useState("");
+  const [mail, setmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const BACK_END_URL = import.meta.env.BACK_END_URL;
 
-  const [postInput, setpostInput] = useState<postInput>({
-    username: "",
-    email: "",
-    contact: "",
-    password: "",
-  });
-  const [msg, setMsg] = useState("");
-  const [ismsg, setismsg] = useState(false);
-
-  const debounce = <T extends (...args: unknown[]) => void>(func: T, delay: number) => {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    return function (...args: Parameters<T>) {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
-  };
-
-  const ReqSingup = async () => {
-    try {
-      const Response = await axios.post(
-        `${BACK_END_URL}/api/v1/user/signup`,
-        postInput
-      );
-
-      const { token } = Response.data;
-      if (!token) {
-        setMsg(Response.data.msg);
-        setismsg(true);
-        setTimeout(() => {
-          setismsg(false);
-        }, 2000);
-      } else {
-        localStorage.setItem("token", token);
-        if (localStorage.getItem("token")) {
-          navigate("/BlogsFeed");
-        }
-      }
-    } catch (error) {
-      console.log(error);
-      setismsg(true);
-      setMsg("Try again!");
+  const handleSignup = async () => {
+    if (!name || !mail || !phone || !password) {
+      console.log("All fields are required");
+      return;
     }
-  };
 
-  const debounceReqSignup = useCallback(
-    debounce(ReqSingup, 300),
-    [postInput.email, postInput.password, postInput.username]
-  );
+    try {
+      const res = await axios.post("http://localhost:3000/company/registercompany", {
+        name,
+        mail,
+        phone,
+        password,
+      });
 
-  const handleSubmit = () => {
-    debounceReqSignup();
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        navigate("/"); // or any route you want
+      } else {
+        console.log("Signup failed:", res.data.msg || "Unknown error");
+      }
+    } catch (err) {
+      console.log("Error during signup:", err);
+    }
   };
 
   return (
     <div className="h-screen w-full bg-black flex items-center justify-center">
       <div className="absolute inset-0 bg-gradient-to-r from-black via-blue-900 to-purple-800 animate-glowing-beam bg-[length:200%_100%] z-0"></div>
-      
-      {ismsg && <Msgbox msg={msg} />}
 
       <div className="relative z-10 w-full max-w-md p-8 bg-transparent backdrop-blur-md border border-white/50 rounded-2xl shadow-xl">
-        <Heading heading="Create Company's Account" align="center" className="text-white" />
+        <Heading heading="Create An Account" align="center" className="text-white" />
+
         <div className="flex items-center justify-center mb-4 gap-2">
           <Subheading heading="Already have an Account?" align="center" />
-          <Anchor heading="Login" link="/company/Login" />
+          <Anchor heading="Login" link="/Signin" />
         </div>
 
         <InputAndLabel
-          heading="HR Name"
-          placeholder="Enter your username"
-          onChange={(e) =>
-            setpostInput((c) => ({
-              ...c,
-              username: e.target.value,
-            }))
-          }
+          heading="name"
+          placeholder="Enter your name"
+          onChange={(e) => setName(e.target.value)}
         />
-          <InputAndLabel
-            heading="HR Email"
-            placeholder="Enter your email"
-            onChange={(e) =>
-              setpostInput((c) => ({
-                ...c,
-                email: e.target.value,
-              }))
-            }
-          />
         <InputAndLabel
-          heading="Contact"
-          placeholder="Enter your contact"
-          onChange={(e) =>
-            setpostInput((c) => ({
-              ...c,
-              contact: e.target.value,
-            }))
-          }
+          heading="email"
+          placeholder="Enter your name"
+          onChange={(e) => setmail(e.target.value)}
+        />
+        <InputAndLabel
+          heading="phone"
+          placeholder="Enter your phone number"
+          onChange={(e) => setPhone(e.target.value)}
         />
         <InputAndLabel
           heading="Password"
           type="password"
           placeholder="Enter your password"
-          onChange={(e) =>
-            setpostInput((c) => ({
-              ...c,
-              password: e.target.value,
-            }))
-          }
+          onChange={(e) => setPassword(e.target.value)}
         />
+
         <div className="w-full mt-4 flex justify-center">
-          <Button onClick={handleSubmit} heading="Sign Up" />
+          <Button heading="Sign Up" onClick={handleSignup} />
         </div>
       </div>
     </div>
