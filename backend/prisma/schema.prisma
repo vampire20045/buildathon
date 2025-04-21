@@ -1,22 +1,20 @@
 generator client {
   provider = "prisma-client-js"
-   output   = "./generated/client" 
 }
-
-
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
   id    Int     @id @default(autoincrement())
   email String  @unique
   name  String?
   password String 
   username String @unique
-    interviews InterviewsGiven[]
-
+  appliedJobs  job[]   @relation("UserAppliedJobs")
+interviews InterviewsGiven[]
 }
 model company{
   id Int @id @default(autoincrement())
@@ -34,8 +32,9 @@ model job{
   company company @relation(fields: [company_id], references: [id])
   company_id Int
   opening Boolean @default(true)
-}
 
+  User User[] @relation("UserAppliedJobs")
+}
 model InterviewsGiven {
   id           Int    @id @default(autoincrement())
   companyName  String
