@@ -81,7 +81,7 @@ export const SignUp = () => {
       {ismsg && <Msgbox msg={msg} />}
 
       <div className="relative z-10 w-full max-w-md p-8 bg-transparent backdrop-blur-md border border-white/50 rounded-2xl shadow-xl">
-        <Heading heading="Create An Account" align="center" className="text-white" />
+        <Heading heading="Create Company's Account" align="center" className="text-white" />
         <div className="flex items-center justify-center mb-4 gap-2">
           <Subheading heading="Already have an Account?" align="center" />
           <Anchor heading="Login" link="/company/Login" />
