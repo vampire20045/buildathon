@@ -1,19 +1,19 @@
 import axios from "axios";
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Msgbox } from "./subcomponent/msgbox";
-import { Heading } from "./subcomponent/Heading";
-import { Anchor } from "./subcomponent/anchorcompo";
-import { InputAndLabel } from "./subcomponent/labelAndInput";
-import { Button } from "./subcomponent/button";
-import { Subheading } from "./subcomponent/SubHeading";
+import { Msgbox } from "../subcomponent/msgbox";
+import { Heading } from "../subcomponent/Heading";
+import { Anchor } from "../subcomponent/anchorcompo";
+import { InputAndLabel } from "../subcomponent/labelAndInput";
+import { Button } from "../subcomponent/button";
+import { Subheading } from "../subcomponent/SubHeading";
 
 interface PostInput {
   email: string;
   password: string;
 }
 
-export const Singin = () => {
+export const LogIn = () => {
   const BACK_END_URL = import.meta.env.BACK_END_URL;
   const navigate = useNavigate();
 
@@ -73,14 +73,14 @@ export const Singin = () => {
       {ismsg && <Msgbox msg={msg} />}
 
       <div className="relative z-10 w-full max-w-md p-8 bg-transparent backdrop-blur-md border border-white/50 rounded-2xl shadow-xl">
-        <Heading heading="Login To Account" align="center" className="text-white" />
+        <Heading heading="Login To Company's Account" align="center" className="text-white" />
         <div className="flex items-center justify-center mb-4 gap-2">
           <Subheading heading="Don't have an Account?" align="center" />
-          <Anchor heading="Signup" link="/Singup" />
+          <Anchor heading="Signup" link="/company/SignUp" />
         </div>
 
         <InputAndLabel
-          heading="Email"
+          heading="HR Email"
           placeholder="Enter your email"
           onChange={(e) =>
             setPostInput((prev) => ({
