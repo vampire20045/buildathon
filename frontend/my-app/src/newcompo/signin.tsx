@@ -26,8 +26,9 @@ export const  Singin=()=>{
     })
     const [msg,setMsg]= useState("");
     const [ismsg, setismsg]= useState(false);
-    const debounce=<T extends (...args: any[])=>void>(func: T, delay: number)=>{
+    const debounce=<T extends (...args: unknown[])=>void>(func: T, delay: number)=>{
         let timeoutId :  ReturnType<typeof setTimeout> | undefined;
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const context= this;
         
         return function(...args: Parameters<T>){
