@@ -1,47 +1,49 @@
 import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import HALO from "vanta/dist/vanta.halo.min";
 
-declare global {
-  interface Window {
-    VANTA: any;
-  }
+interface Props {
+  children: React.ReactNode;
 }
 
-const VantaBackground = () => {
-  const vantaRef = useRef<HTMLDivElement | null>(null);
+const VantaBackground: React.FC<Props> = ({ children }) => {
   const [vantaEffect, setVantaEffect] = useState<any>(null);
+  const vantaRef = useRef(null);
 
   useEffect(() => {
-    if (!vantaEffect && window.VANTA) {
-      const effect = window.VANTA.HALO({
-        el: vantaRef.current,
-        mouseControls: true,
-        touchControls: true,
-        gyroControls: false,
-        minHeight: 200.0,
-        minWidth: 200.0,
-        backgroundColor: 0x131a43,
-        baseColor: 0x1a59,
-        size: 1,
-        amplitudeFactor: 1,
-        xOffset: 0,
-        yOffset: 0,
-      });
-
-      setVantaEffect(effect);
+    if (!vantaEffect && vantaRef.current) {
+      setVantaEffect(
+        HALO({
+          el: vantaRef.current,
+          THREE,
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          baseColor: 0x000000,
+          backgroundColor: 0x000000,
+        })
+      );
     }
-
     return () => {
       if (vantaEffect) vantaEffect.destroy();
     };
   }, [vantaEffect]);
 
   return (
-    <div
-      ref={vantaRef}
-      className="w-full h-screen flex items-center justify-center text-white"
-    >
-      <h1 className="text-4xl font-bold">Tea Time with Vanta ☕✨</h1>
-    </div>
+    <>
+      {/* Vanta background layer (fixed behind all content) */}
+      <div className="fixed top-0 left-0 w-full h-full -z-10">
+        <div
+          ref={vantaRef}
+          className="w-full h-full"
+        />
+      </div>
+
+      {/* Foreground scrollable content */}
+      <div className="relative z-10">
+        {children}
+      </div>
+    </>
   );
 };
 
