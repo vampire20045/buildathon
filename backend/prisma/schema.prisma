@@ -29,7 +29,7 @@ model Company {
 model Job {
   job_id           Int      @id @default(autoincrement())
   position         String
-  discription      String
+  description      String
   company          Company  @relation(fields: [company_id], references: [id])
   company_id       Int
   opening          Boolean  @default(true)

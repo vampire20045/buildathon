@@ -1,123 +1,144 @@
 import express, { Request, Response } from 'express';
-//@ts-ignore
-import {jwt} from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { create } from 'domain';
+import {auth} from '../middleware/auth';
 
 const Hrrouter = express.Router();
 const prisma = new PrismaClient();
-const JWT_SECRET = "Aryan";
+const JWT_SECRET = "Aryan"; // Should use process.env.JWT_SECRET in production
 
-const hrDetails= z.object({
-    company: z.string(),
-    companyVerified: z.boolean(),
-    mail: z.string().email(),
-    contact: z.string().min(10).max(10),
+// Zod validation schemas
+const hrDetails = z.object({
+  name: z.string(),
+  mail: z.string().email(),
+  contact: z.string().min(10).max(10),
+  password: z.string(),
+});
 
+const jobDetails = z.object({
+  position: z.string(),
+  description: z.string(),
+});
 
+// Register a new company
+Hrrouter.post('/RegisterCompany', async (req: Request, res: Response) => {
+  const HrDetails = req.body;
 
-})
+  const result = hrDetails.safeParse(HrDetails);
+  if (!result.success) {
+    console.error('Validation failed:', result.error.format());
+    return res.status(400).json({ msg: 'Information is invalid. Check again.' });
+  }
 
-const jobDetails= z.object({
-    position: z.string(),
-    description:z.string()
+  try {
+    const existing = await prisma.company.findUnique({
+      where: { company_email: HrDetails.mail },
+    });
 
-
-})
-
-Hrrouter.post('/RegisterCompany', async ( req: Request, res: Response)=>{
-    const HrDeatils= req.body();
-    const result= hrDetails.safeParse(HrDeatils);
-    if(!result.success) return res.json({msg: 'infomation is invlaid check again'});
-    try {
-        const result= prisma.company.findUnique({
-            where:{
-                mail: HrDeatils.mail
-            }
-        })
-        if(result) return res.json({msg: 'hey you are alredy registred!.'})
-        await prisma.company.create({
-         company: HrDeatils.company,
-         mail: HrDeatils.mail ,
-         contact: HrDeatils.contact,
-
-    })
-        
-    } catch (error) {
-        return res.json({msg: 'hey could not register you company!'})
-        
+    if (existing) {
+      return res.status(409).json({ msg: 'Hey, you are already registered!' });
     }
 
+    const newCompany = await prisma.company.create({
+      data: {
+        company_name: HrDetails.name,
+        company_email: HrDetails.mail,
+        company_phone: HrDetails.contact,
+        password: HrDetails.password, // Passwords should be hashed!
+      },
+    });
 
+    const token = jwt.sign(
+      { companyId: newCompany.id },
+      JWT_SECRET,
+      { expiresIn: '5h' }
+    );
 
-}) 
+    return res.status(201).json({ msg: 'Company registered successfully.', token });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ msg: 'Could not register your company!' });
+  }
+});
 
+// Login route
+Hrrouter.post('/LoginCompany', async (req: Request, res: Response) => {
+  const { mail, password } = req.body;
 
-Hrrouter.post('/JobPosting', async ( req: Request, res: Response)=>{
-    const jobDetailsInfo= req.body;
-    const result= jobDetails.safeParse(jobDetailsInfo);
-    if(!result.success) return res.json({msg: 'hey could not post the job'});
+  if (!mail || !password) {
+    return res.status(400).json({ msg: 'Email and password are required' });
+  }
+
+  try {
+    const company = await prisma.company.findUnique({
+      where: { company_email: mail },
+    });
+
+    if (!company || company.password !== password) {
+      return res.status(401).json({ msg: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { companyId: company.id },
+      JWT_SECRET,
+      { expiresIn: '5h' }
+    );
+
+    return res.json({ msg: 'Login successful', token });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ msg: 'Internal error during login' });
+  }
+});
+
+// POST a Job
+Hrrouter.post('/JobPost', auth, async (req: any, res: Response) => {
+  const result = jobDetails.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ msg: 'Information is invalid. Check again.' });
+  }
+
+  try {
+    const { position, description } = req.body;
+    const companyId = req.user.id;
+
     await prisma.job.create({
-        position: jobDetailsInfo.position,
-        discription: jobDetailsInfo.position,
-    })
+      data: {
+        position,
+        description,
+        company_id: companyId
+      }
+    });
 
-    return res.json({msg:" your job is posted !!"});
+    return res.status(201).json({ msg: 'Your job has been posted successfully!' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ msg: 'Could not post the job. Try again!' });
+  }
+});
 
+// DELETE a Job
+Hrrouter.delete('/JobDelete', auth, async (req: any, res: Response) => {
+  const { jobId } = req.body;
 
+  if (!jobId) return res.status(400).json({ msg: "Job id is not valid." });
 
-})
+  try {
+    await prisma.job.delete({
+      where: { job_id: jobId }
+    });
 
-Hrrouter.post('/JobDelete', async ( req: Request, res: Response)=>{
-    const {jobId}= req.body;
-    if(!jobId) return res.json({msg: "Job id is not valid make sure it exists."})
-    try {
-        await prisma.job.delete({
-            where:{
-               id: jobId
-            }
-        })
-    } catch (error) {
-        return res.json({msg:"could not remove the job now try again!"});
+    return res.json({ msg: "Your job is removed!!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ msg: "Could not remove the job. Try again!" });
+  }
+});
 
-        
-    }
+// View Dashboard (Sample)
+Hrrouter.get('/viewDashBoard', auth, async (_req: Request, res: Response) => {
+  return res.json({ msg: 'Hey, your stats are empty for now.' });
+});
 
-
-    return res.json({msg:" your job is removed  !!"});
-    
-
-
-})
-
-Hrrouter.get('/appliedCount', async (req: Request, res: Response) => {
-    const { jobid } = req.body;
-    if (!jobid) return res.json({ msg: "The job might not exist" });
-  
-    try {
-      const job = await prisma.job.findUnique({
-        where: {
-          id: jobid
-        },
-        select: {
-          appliedCount: true
-        }
-      });
-  
-      if (!job) return res.json({ msg: "Job not found" });
-  
-      return res.json({ count: job.appliedCount });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ msg: "Server error" });
-    }
-  });
-  
-
-Hrrouter.get('/viewDashBoard', async (req: Request, res: Response)=>{
-// returns the value of  stats from the user ;
-return res.json({msg: 'hey you stats are empty now '});
- 
-})
-
+export default Hrrouter;
