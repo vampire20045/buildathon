@@ -7,6 +7,7 @@ import { InterviewPage } from "./newcompo/interview";
 import { LogIn } from "./newcompo/company/LogIn";
 import { SignUp } from "./newcompo/company/SignUp";
 import { Dashboard } from "./newcompo/dashBoard";
+import { Test } from "./newcompo/Test";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/company/Signup" element={<SignUp />}></Route>
         <Route path="/company/Login" element={<LogIn />}></Route>
         <Route path="/userDashboard" element={<Dashboard />}></Route>
+        <Route path="/test" element={<Test />}></Route>
       </Routes>
     </BrowserRouter>
   );
