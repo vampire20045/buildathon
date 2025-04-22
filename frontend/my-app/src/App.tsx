@@ -8,7 +8,7 @@ import { InterviewPage } from './newcompo/interview'
 import {LogIn} from './newcompo/company/LogIn'
 import {SignUp} from './newcompo/company/SignUp'
 import { JobPosting } from './newcompo/jobposting'
-import {UserDashboard} from './newcompo/userDashboard'
+import { UserDashboard } from './newcompo/userDashboard'
 
 function App() {
   return (
@@ -24,6 +24,7 @@ function App() {
       <Route path="/dashboard" element={<UserDashboard/>}></Route>
 
     </Routes>
+
     </BrowserRouter>
   );
 }
