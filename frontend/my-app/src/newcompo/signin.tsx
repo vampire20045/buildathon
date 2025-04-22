@@ -1,109 +1,66 @@
-import axios from "axios";
-import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Msgbox } from "./subcomponent/msgbox";
+import { useState } from "react";
 import { Heading } from "./subcomponent/Heading";
 import { Anchor } from "./subcomponent/anchorcompo";
+import { Subheading } from "./subcomponent/SubHeading";
 import { InputAndLabel } from "./subcomponent/labelAndInput";
 import { Button } from "./subcomponent/button";
-import { Subheading } from "./subcomponent/SubHeading";
-
-interface PostInput {
-  email: string;
-  password: string;
-}
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export const Singin = () => {
-  const BACK_END_URL = import.meta.env.BACK_END_URL;
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const [postInput, setPostInput] = useState<PostInput>({
-    email: "",
-    password: "",
-  });
-
-  const [msg, setMsg] = useState("");
-  const [ismsg, setIsMsg] = useState(false);
-
-  const debounce = <T extends (...args: unknown[]) => void>(func: T, delay: number) => {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    return function (...args: Parameters<T>) {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
-  };
-
-  const ReqSingin = async () => {
-    try {
-      const response = await axios.post(`${BACK_END_URL}/api/v1/user/Login`, postInput);
-      const { userToken } = response.data;
-
-      if (!userToken) {
-        setMsg(response.data.msg);
-        setIsMsg(true);
-        setTimeout(() => {
-          setIsMsg(false);
-        }, 1000);
-      } else {
-        localStorage.setItem("token", userToken);
-        navigate("/BlogsFeed");
-      }
-    } catch (error) {
-      console.log(error);
-      setIsMsg(true);
-      setMsg("Try again!");
+  const handleSignin = async () => {
+    if (!username || !password) {
+      console.log("All fields are required");
+      return;
     }
-  };
 
-  const debounceReqSignin = useCallback(
-    debounce(ReqSingin, 300),
-    [postInput.email, postInput.password]
-  );
+    try {
+      const res = await axios.post("http://localhost:3000/api/login", {
+        username,
+        password,
+      });
 
-  const handleSubmit = () => {
-    debounceReqSignin();
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        navigate("/"); // Change this path if needed
+      } else {
+        console.log("Login failed:", res.data.msg || "Unknown error");
+      }
+    } catch (err) {
+      console.log("Error during login:", err);
+    }
   };
 
   return (
     <div className="h-screen w-full bg-black flex items-center justify-center">
-      <div className="absolute inset-0 bg-gradient-to-r from-black via-blue-900 to-purple-800 animate-glowing-beam bg-[length:200%_100%] z-0" />
-
-      {ismsg && <Msgbox msg={msg} />}
+      <div className="absolute inset-0 bg-gradient-to-r from-black via-blue-900 to-purple-800 animate-glowing-beam bg-[length:200%_100%] z-0"></div>
 
       <div className="relative z-10 w-full max-w-md p-8 bg-transparent backdrop-blur-md border border-white/50 rounded-2xl shadow-xl">
         <Heading heading="Login To Account" align="center" className="text-white" />
+
         <div className="flex items-center justify-center mb-4 gap-2">
           <Subheading heading="Don't have an Account?" align="center" />
           <Anchor heading="Signup" link="/Singup" />
         </div>
 
         <InputAndLabel
-          heading="Email"
-          placeholder="Enter your email"
-          onChange={(e) =>
-            setPostInput((prev) => ({
-              ...prev,
-              email: e.target.value,
-            }))
-          }
+          heading="username"
+          placeholder="Enter your username"
+          onChange={(e) => setUsername(e.target.value)}
         />
-
         <InputAndLabel
           heading="Password"
           type="password"
           placeholder="Enter your password"
-          onChange={(e) =>
-            setPostInput((prev) => ({
-              ...prev,
-              password: e.target.value,
-            }))
-          }
+          onChange={(e) => setPassword(e.target.value)}
         />
 
         <div className="w-full mt-4 flex justify-center">
-          <Button heading="Sign In" onClick={handleSubmit} />
+          <Button heading="Sign In" onClick={handleSignin} />
         </div>
       </div>
     </div>
