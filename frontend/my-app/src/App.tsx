@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './App.css'
 import { Singup } from './newcompo/signup'
@@ -9,7 +8,9 @@ import {LogIn} from './newcompo/company/LogIn'
 import {SignUp} from './newcompo/company/SignUp'
 import { JobPosting } from './newcompo/jobposting'
 import { UserDashboard } from './newcompo/userDashboard'
-
+import { Dashboard } from "./newcompo/dashBoard";
+import { Test } from "./newcompo/Test";
+      
 function App() {
   return (
     <BrowserRouter>       
@@ -22,9 +23,10 @@ function App() {
       <Route path="/company/Login" element={<LogIn/>}></Route>
       <Route path="/jobposting" element={<JobPosting/>}></Route>
       <Route path="/dashboard" element={<UserDashboard/>}></Route>
+      <Route path="/userDashboard" element={<Dashboard />}></Route>
+        <Route path="/test" element={<Test />}></Route>
 
     </Routes>
-
     </BrowserRouter>
   );
 }
