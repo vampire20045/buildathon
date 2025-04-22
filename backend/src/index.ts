@@ -18,7 +18,6 @@ app.use(express.json());
 
 // Routes
 app.use("/api", router);
-app.use('/Interview', Interviewrouter);
 
 // Error handling middleware (useful for catching unhandled errors)
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
